@@ -13,6 +13,7 @@ from app.api.auth import router as auth_router
 
 # routers públicos
 from app.api.health import router as health_router
+from app.api.products import router as products_router
 
 app = FastAPI(title="API Gateway SBO ↔ Odoo")
 
@@ -33,6 +34,7 @@ app.add_middleware(SlowAPIMiddleware)
 # 4.1 Públicos (no requieren token)
 app.include_router(health_router)      # /api/health
 app.include_router(auth_router)        # /api/token
+app.include_router(products_router)
 
 if __name__ == "__main__":
     uvicorn.run(
