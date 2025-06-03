@@ -8,5 +8,6 @@ prometheus-fastapi-instrumentator
 opentelemetry-api
 opentelemetry-sdk
 sentry-sdk
+PyJWT
 pytest
 httpx
