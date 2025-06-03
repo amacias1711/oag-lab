@@ -1,12 +1,12 @@
 # app/api/auth.py
 
+from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 import jwt
 
 from app.core.config import settings
 from app.utils.logger import logger
-from app.utils.jwt import sign_jwt         # <— nuevo import
 
 router = APIRouter(tags=["Auth"])
 
@@ -22,7 +22,7 @@ def authenticate_user(username: str, password: str) -> bool:
 @router.post(
     "/api/token",
     summary="Obtener JWT",
-    description="Emite un token para el middleware SBO usando credenciales de .env",
+    description="Emite un token para el middleware SBO",
 )
 def login(form: OAuth2PasswordRequestForm = Depends()):
     # 1) Validación de credenciales del SBO
@@ -33,13 +33,12 @@ def login(form: OAuth2PasswordRequestForm = Depends()):
             detail="Usuario o contraseña incorrectos"
         )
 
-    # 2) Generar y firmar el JWT
-    token = sign_jwt(form.username)
+    # 2) Generar JWT con expiración
+    expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    payload = {"sub": form.username, "exp": expire}
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
     # 3) Loguear emisión exitosa
     logger.info(f"Token emitido para usuario={form.username}")
 
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
+    return {"access_token": token, "token_type": "bearer"}

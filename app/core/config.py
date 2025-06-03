@@ -1,35 +1,36 @@
 # app/core/config.py
-import os
-from dotenv import load_dotenv
+from pydantic import BaseSettings
 
-# Carga variables de .env automáticamente
-load_dotenv()
 
-class Settings:
+class Settings(BaseSettings):
+    """Application configuration loaded from environment variables."""
+
+    # SBO credentials for the auth endpoint
+    API_SBO_USER: str
+    API_SBO_PASS: str
+
+    # JWT configuration
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 30
+
+    # General settings
+    PORT: int = 1987
+
     # Odoo JSON-RPC
-    ODOO_URL: str = os.getenv("ODOO_URL", "http://localhost:8069")
-    ODOO_DB: str = os.getenv("ODOO_DB", "")
-    ODOO_USER: str = os.getenv("ODOO_USERNAME", "")
-    ODOO_PASSWORD: str = os.getenv("ODOO_PASSWORD", "")
-
-    # API Gateway
-    #API_GATEWAY_URL: str = os.getenv("API_GATEWAY_URL", "http://localhost:8000")
-    PORT: int = int(os.getenv("PORT", "1987"))
-
-    # JWT
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "changeme")
-    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
-    JWT_EXPIRE_MINUTES: int = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))
-
-    # SBO
-    SBO_USER: str = os.getenv("SBO_USER", "sbo")
-    SBO_PASSWORD: str = os.getenv("SBO_PASSWORD", "")
+    ODOO_URL: str = "http://localhost:8069"
+    ODOO_DB: str = ""
+    ODOO_USER: str = ""
+    ODOO_PASSWORD: str = ""
 
     # Jaeger
-    JAEGER_HOST: str = os.getenv("JAEGER_HOST", "localhost")
-    JAEGER_PORT: int = int(os.getenv("JAEGER_PORT", "6831"))
+    JAEGER_HOST: str = "localhost"
+    JAEGER_PORT: int = 6831
 
     # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_LEVEL: str = "INFO"
+
+    class Config:
+        env_file = ".env"
 
 settings = Settings()
