@@ -1,5 +1,8 @@
 # app/core/config.py
-from pydantic import BaseSettings
+try:
+    from pydantic_settings import BaseSettings
+except ImportError:  # pragma: no cover - fallback for Pydantic v1
+    from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
