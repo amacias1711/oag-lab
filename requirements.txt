@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+requests
+odoorpc
+loguru
+prometheus-fastapi-instrumentator
+opentelemetry-api
+opentelemetry-sdk
+sentry-sdk
+pytest
+httpx
