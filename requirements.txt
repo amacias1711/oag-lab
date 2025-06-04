@@ -12,3 +12,5 @@ sentry-sdk
 PyJWT
 pytest
 httpx
+
+odoorpc>=0.9.0
