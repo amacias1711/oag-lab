@@ -6,32 +6,23 @@ from hashlib import md5
 
 from app.models.product import Product
 from app.utils.auth import JWTBearer
+from app.utils.odoo_connector import OdooConnector
 
 router = APIRouter(prefix="/api/v1", tags=["Products"], dependencies=[Depends(JWTBearer())])
 
-# Static dataset for demonstration purposes
-PRODUCTS = [
-    Product(
-        sku="SKU-ABC-01",
-        name="Suscripción Digital 12M",
-        standard_cost=9.8,
-        list_price=12.5,
-        uom="unid",
-        category_id=7,
-        updated_at=datetime(2025, 5, 24, 12, 15, 23),
-        status="active",
-    ),
-    Product(
-        sku="SKU-XYZ-99",
-        name="Producto Demo",
-        standard_cost=5.0,
-        list_price=8.0,
-        uom="unid",
-        category_id=7,
-        updated_at=datetime(2025, 5, 20, 8, 0, 0),
-        status="inactive",
-    ),
-]
+# Helper to map Odoo records to the API Product model
+def _map_odoo_product(record: dict) -> Product:
+    """Convert an Odoo product record into the Product schema."""
+    return Product(
+        sku=record.get("default_code"),
+        name=record.get("name"),
+        standard_cost=record.get("standard_price"),
+        list_price=record.get("list_price"),
+        uom=(record.get("uom_id") or [None, ""])[1],
+        category_id=(record.get("categ_id") or [None])[0],
+        updated_at=datetime.fromisoformat(record.get("write_date")),
+        status="active" if record.get("active") else "inactive",
+    )
 
 
 @router.get("/products", response_model=dict)
@@ -48,19 +39,26 @@ def list_products(
     fields: Optional[str] = None,
     include: Optional[str] = None,  # Not used but kept for spec completeness
 ):
-    data = PRODUCTS
+    connector = OdooConnector()
 
-    # Filtering
+    # Build Odoo domain with the provided filters
+    domain: List = []
     if q:
-        data = [p for p in data if q.lower() in p.name.lower() or q.lower() in p.sku.lower()]
+        # Filter by name or SKU using ilike (case-insensitive)
+        domain.extend(["|", ("name", "ilike", q), ("default_code", "ilike", q)])
     if sku:
-        data = [p for p in data if p.sku == sku]
+        domain.append(("default_code", "=", sku))
     if category_id is not None:
-        data = [p for p in data if p.category_id == category_id]
+        domain.append(("categ_id", "=", category_id))
     if updated_since:
-        data = [p for p in data if p.updated_at >= updated_since]
+        domain.append(("write_date", ">=", updated_since.strftime("%Y-%m-%d %H:%M:%S")))
     if status:
-        data = [p for p in data if p.status == status]
+        domain.append(("active", "=", status == "active"))
+
+    # Obtain products from Odoo using the connector
+    # The connector returns raw dictionaries from odoorpc; we convert them
+    records = connector.search_products(domain=domain)
+    data = [_map_odoo_product(r) for r in records]
 
     total = len(data)
 
@@ -114,7 +112,10 @@ def list_products(
 
 @router.get("/products/{sku}", response_model=Product)
 def get_product(sku: str):
-    for product in PRODUCTS:
-        if product.sku == sku:
-            return product
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+    connector = OdooConnector()
+    record = connector.get_product_by_sku(sku)
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Producto no encontrado")
+
+    # Convert Odoo dict to Product model
+    return _map_odoo_product(record)
