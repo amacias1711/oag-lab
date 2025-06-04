@@ -12,16 +12,43 @@ router = APIRouter(prefix="/api/v1", tags=["Products"], dependencies=[Depends(JW
 
 # Helper to map Odoo records to the API Product model
 def _map_odoo_product(record: dict) -> Product:
-    """Convert an Odoo product record into the Product schema."""
+    # Si default_code es False o None, lo convertimos en cadena vacía:
+    sku_value = record.get("default_code") or ""
+    # Si name viene como False (aunque rara vez, en general name siempre existe),
+    # lo convertimos en cadena vacía:
+    name_value = record.get("name") or ""
+    # Para los campos numéricos o listas, igual aplicar una conversión segura:
+    standard_cost_value = record.get("standard_price") or 0.0
+    list_price_value     = record.get("lst_price") or 0.0
+
+    # El uom_id viene en Odoo como [id, "Nombre de unidad"] o como False si no está.
+    # Pongamos que tu modelo espera un string. Entonces:
+    uom_value = ""
+    if record.get("uom_id"):
+        # Odoo devuelve [id, "Unidad"], por lo que tomamos el nombre (posición 1) o
+        # si tu modelo en Pydantic acepta directamente el ID numérico, cambialo a record["uom_id"][0].
+        uom_value = record["uom_id"][1]   # nombre de la unidad
+
+    # Lo mismo con categ_id; mágicamente Odoo regresa [id, "Nombre categoría"] o False.
+    category_value = None
+    if record.get("categ_id"):
+        category_value = record["categ_id"][0]  # si tu modelo quiere solo el ID
+        # o bien record["categ_id"][1] si quieres poner el nombre
+
+    # Para write_date, a veces Odoo devuelve False o None si no se ha modificado.
+    updated_at_value = record.get("write_date") or datetime.utcnow()
+
+    status_value = "active" if record.get("active") else "inactive"
+
     return Product(
-        sku=record.get("default_code"),
-        name=record.get("name"),
-        standard_cost=record.get("standard_price"),
-        list_price=record.get("list_price"),
-        uom=(record.get("uom_id") or [None, ""])[1],
-        category_id=(record.get("categ_id") or [None])[0],
-        updated_at=datetime.fromisoformat(record.get("write_date")),
-        status="active" if record.get("active") else "inactive",
+        sku=sku_value,
+        name=name_value,
+        standard_cost=standard_cost_value,
+        list_price=list_price_value,
+        uom=uom_value,
+        category_id=category_value,
+        updated_at=updated_at_value,
+        status=status_value,
     )
 
 

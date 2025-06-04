@@ -21,12 +21,19 @@ class OdooConnector:
         if self._odoo is None:
             parsed = urlparse(settings.ODOO_URL)
             host = parsed.hostname or "localhost"
-            protocol = parsed.scheme or "http"
-            port = parsed.port or (443 if protocol == "https" else 80)
+            scheme = parsed.scheme.lower() or "http"
+            if scheme == "https":
+                protocol = "jsonrpc+ssl"
+            else:
+                # si el scheme es "http" (o cualquier otro), usar jsonrpc
+                protocol = "jsonrpc"
+            if parsed.port:
+                port = parsed.port
+            else:
+                # si es jsonrpc+ssl, puerto 443; si es jsonrpc, puerto 8069 (u 80 si fuera standard HTTP)
+                port = 443 if protocol == "jsonrpc+ssl" else 8069
             try:
-                logger.info(
-                    "Connecting to Odoo host=%s db=%s user=%s", host, settings.ODOO_DB, settings.ODOO_USER
-                )
+                logger.info(f"Connecting to Odoo host={host} db={settings.ODOO_DB} user={settings.ODOO_USER}")
                 self._odoo = odoorpc.ODOO(host, protocol=protocol, port=port)
                 self._odoo.login(settings.ODOO_DB, settings.ODOO_USER, settings.ODOO_PASSWORD)
             except Exception:
